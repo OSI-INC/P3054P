@@ -3,7 +3,7 @@
 
 ; Version number and other software codes.
 
-const version         1 ; Firmwarwe Version.
+const version         2 ; Firmwarwe Version.
 const calib_key  0x1234 ; Calibration Key
 const config_key 0x5678 ; Configuration Key
 
@@ -87,13 +87,15 @@ const calib_idl  0x0203 ; Device Identifier, LO byte
 const calib_fck  0x0204 ; Fast Clock Calibration Mask
 const calib_rf   0x0205 ; Radio Frequency Low Calibration
 
-; Configuration Block: Variables space that will be 
-; over-written by reads from the configuration block of 
-; the non-volatile memory (NVM). This space occupies the
-; bottom 128 bytes of the 256-byte program variable space.
-; A configuration read begins by reading the first sixteen
-; bytes from NVM. The first two must match the configuration
-; key or else the configuration variables will be over-written
+; Configuration Block: Variable space that will hold the
+; configuration of the device. These locations will either
+; be filled by default values or by values from the 
+; configuration array in the non-volatile memory (NVM). The 
+; configuration block occupies the bottom 128 bytes of the 
+; 256-byte program variable space. On start-up, we read the 
+; 128-byte configuration block from the NVM and check the 
+; first two bytes. These must match the configuration key 
+; or else the NVM configuration variables will be over-written
 ; by default values.
 
 const conf_len      128 ; Number of bytes to read
@@ -103,14 +105,14 @@ const conf_keyl  0x0301 ; Configuration Key, LO byte
 ; We have a reserved bytes here for version and date codes
 ; to be implemented later.
 
-const conf_res1  0x0302
-const conf_res2  0x0303
-const conf_res3  0x0304 
-const conf_res4  0x0305 
-const conf_res5  0x0306 
-const conf_res6  0x0307 
-const conf_res7  0x0308
-const conf_res8  0x0309 
+const conf_r02   0x0302
+const conf_r03   0x0303
+const conf_r04   0x0304 
+const conf_r05   0x0305 
+const conf_r06   0x0306 
+const conf_r07   0x0307 
+const conf_r08   0x0308
+const conf_r09   0x0309 
 
 ; The telemetry protocol transmit period is the number of 
 ; 1024 SPS periods between transmit interrupts. This will
@@ -129,10 +131,10 @@ const dc_in      0x030B ; X1-X3 DC-Coupled
 ; Configuration of X1-X4 input sampling. The sample 
 ; configurations are written once to their respective
 ; control registers during initialization. The bits 0-2
-; of the configuration the number of left shifts applied 
-; to each sample before it is added to the accumulator. In 
-; the case of X4, and X4 only, bit 3 disables accumulation
-; so that X4 is sampled only once for each transmit sample.
+; set the number of left shifts applied to each sample 
+; before it is added to the accumulator. In the case of X4,
+; bit 3 disables accumulation so that X4 is sampled only 
+; once for each transmit sample.
 
 const x1_scfg    0x030C ; X1 Sample Configuration
 const x2_scfg    0x030D ; X2 Sample Configuration
@@ -145,7 +147,7 @@ const x4_scfg    0x030F ; X4 Sample Configuration
 ; the number of transmit interrupts between transmit samples. 
 ; For at least one telemetry channel, this value will be 
 ; one: the telemetry channel with the fastest transmit 
-; rate. But this channel may not be one X1-X4. We disable 
+; rate. But this channel may not be one of X1-X4. We disable 
 ; any of X1-X4 by setting its transmit period to zero. The 
 ; transmit index is the counter that keeps track of when to 
 ; transmit. The channel number is the telemetry channel this 
@@ -167,6 +169,13 @@ const x4_xch     0x0319 ; X4 Transmit Channel Number
 const x4_xpd     0x031A ; X4 Transmit Period
 const x4_idx     0x031B ; X4 Transmit Index
 
+; Some reserved bytes.
+
+const conf_r1C   0x031C
+const conf_r1D   0x031D
+const conf_r1E   0x031E
+const conf_r1F   0x031F
+
 ; Configuration Variables: Temperature Sensor. The measurement
 ; period is in multiples of 250 ms. We have a two-byte timer 
 ; that is incremented on every interrupt. When its HI byte 
@@ -175,18 +184,18 @@ const x4_idx     0x031B ; X4 Transmit Index
 
 const temp_xch   0x0320 ; Transmit Channel 
 const temp_xpd   0x0321 ; Transmit Period
-const temp_idx   0x0322 ; Index
-const temp_mpd   0x0323 ; Measurement Period
+const temp_idx   0x0322 ; Transmit Index
+const temp_mpd   0x0323 ; Measurement Period, x250ms
 const temp_mth   0x0324 ; Measurement Timer, HI
 const temp_mtl   0x0325 ; Measurement Timer, LO
-const temp_svh   0x0326 ; Saved, HI
-const temp_svl   0x0327 ; Saved, LO
+const temp_svh   0x0326 ; Measurement, Saved, HI
+const temp_svl   0x0327 ; Measurement, Saved, LO
 
 ; Configuration Variables: Accelerometer. We have channels
 ; for X, Y, and Z directions. If these are non-zero, we
 ; will transmit the coordinate. The transmit period is
 ; a multiple of the telemetry protocol period. We configure
-; the BMA423 sensor with three bytes: enable or disable,
+; the BMA400 sensor with three bytes: enable or disable,
 ; update rate, and dynamic range. We list the byte values
 ; and their meanings in a separate constant declaration
 ; paragraph.
@@ -196,9 +205,9 @@ const acc_ych    0x0329 ; Transmit Channel for Y
 const acc_zch    0x032A ; Transmit Channel for Z
 const acc_xpd    0x032B ; Transmit Period
 const acc_idx    0x032C ; Transmit Index
-const bma_state  0x032D ; Enable or Disable Measurement
-const bma_rate   0x032E ; Measurement Update Rate
-const bma_range  0x032F ; Measurement Dynamic Range
+const acc_state  0x032D ; CONFIG0, power mode.
+const acc_range  0x032E ; CONFIG1, dynamic range.
+const acc_rate   0x032F ; CONFIG2, filters and rates.
 
 ; Configuration Variables: NVM Transmission. Each transmit
 ; sample is a new byte read from the NVM, in which the top
@@ -332,46 +341,33 @@ const tmp_onel     0x00 ; One-shot measurement, LSB
 const tmp_fasth    0x00 ; Fast measurement, MSB
 const tmp_fastl    0x00 ; Fast measurement, LSB
 
-; Constants: Accelerometer. The BMA423 requires configuration for
-; its internal sample rate. We give the internal addresses of 
-; registers. When the address is always for a two-byte read, we 
-; say so.
+; Constants: Accelerometer. The BMA400 requires that we 
+; configure it operating mode and dynamic range. We give 
+; the internal addresses of registers. When the address 
+; is always for a two-byte read, we say so.
 
-const bma_addr     0x18 ; I2C address
+const bma_addr     0x14 ; I2C address
 const bma_id       0x00 ; Identifier register
-const bma_x        0x12 ; ACC_X register, two bytes, little-endian
-const bma_y        0x14 ; ACC_Y register, two bytes, little-endian
-const bma_z        0x16 ; ACC_Z register, two bytes, little-endian
-const bma_time0    0x18 ; SENSOR_TIME_0 register
-const bma_time1    0x19 ; SENSOR_TIME_1 register
-const bma_time2    0x1A ; SENSOR_TIME_2 register
-const bma_temp     0x22 ; TEMPERATURE register
-const bma_status   0x2A ; INTERNAL_STATUS register
-const bma_aconf    0x40 ; ACC_CONF register
-const bma_arange   0x41 ; ACC_RANGE register
-const bma_pctrl    0x7D ; PWR_CTRL register
-const bma_pconf    0x7C ; PWR_CONF register
+const bma_status   0x03 ; INTERNAL_STATUS register
+const bma_x        0x04 ; ACC_X register, two bytes, little-endian
+const bma_y        0x06 ; ACC_Y register, two bytes, little-endian
+const bma_z        0x08 ; ACC_Z register, two bytes, little-endian
+const bma_time0    0x0A ; SENSOR_TIME_0 register
+const bma_time1    0x0B ; SENSOR_TIME_1 register
+const bma_time2    0x0C ; SENSOR_TIME_2 register
+const bma_temp     0x11 ; TEMPERATURE register
+const bma_aconf0   0x19 ; ACC_CONFIG0 register
+const bma_aconf1   0x1A ; ACC_CONFIG1 register
+const bma_aconf2   0x1B ; ACC_CONFIG2 register
 const bma_cmd      0x7E ; CMD register
-const bma_2g       0x00 ; For ACC_RANGE, +-2g
-const bma_4g       0x01 ; For ACC_RANGE, +-4g
-const bma_8g       0x02 ; For ACC_RANGE, +-8g
-const bma_16g      0x03 ; For ACC_RANGE, +-16g
-const bma_0p78     0x01 ; For ACC_CONF, 25/32 Hz, no averaging, no filter
-const bma_1p5      0x02 ; For ACC_CONF, 25/16 Hz, no averaging, no filter
-const bma_3p1      0x03 ; For ACC_CONF, 25/8 Hz, no averaging, no filter
-const bma_6p25     0x04 ; For ACC_CONF, 25/4 Hz, no averaging, no filter
-const bma_12p5     0x05 ; For ACC_CONF, 25/2 Hz, no averaging, no filter
-const bma_25       0x06 ; For ACC_CONF, 25 Hz, no averaging, no filter
-const bma_50       0x07 ; For ACC_CONF, 25 Hz, no averaging, no filter
-const bma_100      0x08 ; For ACC_CONF, 100 Hz, no averaging, no filter
-const bma_200      0x09 ; For ACC_CONF, 200 Hz, no averaging, no filter
-const bma_400      0x0A ; For ACC_CONF, 400 Hz, no averaging, no filter
-const bma_800      0x0B ; For ACC_CONF, 800 Hz, no averaging, no filter
-const bma_enable   0x04 ; For PWR_CTRL, enable data acquisition.
-const bma_disable  0x00 ; For PWR_CTRL, disable data acquisition.
-const bma_pwrsv    0x03 ; For PWR_CONF, power save, fifo self-start.
 const bma_reset    0xB6 ; For CMD, soft reset, starts reconfiguration
 const bma_sdly        2 ; Startup delay in milliseconds
+const bma_sleep    0x00 ; Sleep mode, for CONFIG0
+const bma_lpm      0x01 ; Low-Power mode, for CONFIG0
+const bma_nm       0x02 ; Normal mode, for CONFIG0
+const bma_r2g      0xC6 ; Range +-2g, for CONFIG1
+const bma_r16g     0xC6 ; Range +-16g, for CONFIG1
+const bma_f1       0x00 ; Filter one, for CONFIG2
 
 ; Constants: for use with the Sample Controller.
 
@@ -630,43 +626,31 @@ call i2c_wr
 ld A,bma_sdly
 call delay_ms 
 
-; Specify the PWR_CONF register with its sub-address in L.
+; Write to CONFIG0, which sets the power mode.
 
-ld A,bma_pconf
+ld A,bma_aconf0
 push A
 pop L
 ld IX,scr_bot
-ld A,bma_pwrsv
+ld A,(acc_state)
 ld (IX),A
 ld A,1
 push A
 pop C
 call i2c_wr
 
-; Enable or disable data acquisition by writing to PWR_CTRL 
-; register.
-
-ld A,bma_pctrl
-push A
-pop L
-ld A,(bma_state)
-ld (IX),A
-ld A,1
-push A
-pop C
-call i2c_wr
-
-; Wait for the sensor to configure.
+; Wait for power mode to settle.
 
 ld A,bma_sdly
 call delay_ms 
 
-; Configure update rate by writing to ACC_CONF.
+; Write to CONFIG1, which sets the sensor range to +-16 g.
 
-ld A,bma_aconf 
+ld A,bma_aconf1
 push A
 pop L
-ld A,(bma_rate)
+ld IX,scr_bot
+ld A,(acc_range)
 ld (IX),A
 ld A,1
 push A
@@ -678,12 +662,13 @@ call i2c_wr
 ld A,bma_sdly
 call delay_ms 
 
-; Configure range by writing to ACC_RANGE.
+; Write to CONFIG2, which selects the output data filter.
 
-ld A,bma_arange
+ld A,bma_aconf2
 push A
 pop L
-ld A,(bma_range)
+ld IX,scr_bot
+ld A,(acc_rate)
 ld (IX),A
 ld A,1
 push A
@@ -881,9 +866,16 @@ call tmp_single
 int_temp_done:
 
 ; Transmit an accelerometer measurement. The byte ordering
-; on the accelerometer is little-endian. We will transmit
+; on the BMA400 accelerometer is little-endian, with the
+; first seven bits in the first byte and the upper four
+; bits as the least significant four bits of the next byte. 
+; We shift the twelve bits four places to the left to make
+; a signed sixteen-bit number, then add off_16bs to get
+; an unsigned sixteen-bit number. We will transmit the
 ; x, y, and z coordinates depending upon whether or not
-; these three are enabled by their channel numbers.
+; these three are enabled by their channel numbers being
+; non-zero. We do not check the channel numbers to see if
+; they are valid telemetry signal numbers.
 
 int_acc:
 
@@ -915,13 +907,31 @@ ld A,2
 push A
 pop C
 call i2c_rd
+
+ld A,3
+push A
+pop B
+dec IX
+
+shift_x_loop:
 dec IX
 ld A,(IX)
+rl A
+ld (IX),A
+inc IX
+ld A,(IX)
+rl A
+ld (IX),A
+dec B
+jp nz,shift_x_loop
+
 add A,off_16bs   
 ld (mmu_xhb),A
 dec IX
 ld A,(IX)
+and A,0xF0
 ld (mmu_xlb),A
+
 ld A,(acc_xch)
 ld (mmu_xch),A
 ld A,tx_txi 
@@ -1935,17 +1945,18 @@ ld (temp_mtl),A
 
 ; Deafult configuration the BMA423 accelerometer.
 
-ld A,14
+ld A,5
 ld (acc_xch),A
+inc A
+ld (acc_ych),A
+inc A
+ld (acc_zch),A
 ld A,0
 ld (acc_xpd),A
 ld (acc_idx),A
-ld A,bma_disable
-ld (bma_state),A
-ld A,bma_0p78
-ld (bma_rate),A
-ld A,bma_2g
-ld (bma_range),A
+ld (acc_state),A
+ld (acc_range),A
+ld (acc_rate),A
 
 ; Default configuration of the non-volatile reporting
 ; channel.
