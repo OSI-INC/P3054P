@@ -185,7 +185,7 @@ const conf_r1F   0x031F
 const temp_xch   0x0320 ; Transmit Channel 
 const temp_xpd   0x0321 ; Transmit Period
 const temp_idx   0x0322 ; Transmit Index
-const temp_mpd   0x0323 ; Measurement Period, x250ms
+const temp_mpd   0x0323 ; Measurement Period, x250 ms
 const temp_mth   0x0324 ; Measurement Timer, HI
 const temp_mtl   0x0325 ; Measurement Timer, LO
 const temp_svh   0x0326 ; Measurement, Saved, HI
@@ -205,9 +205,9 @@ const acc_ych    0x0329 ; Transmit Channel for Y
 const acc_zch    0x032A ; Transmit Channel for Z
 const acc_xpd    0x032B ; Transmit Period
 const acc_idx    0x032C ; Transmit Index
-const acc_state  0x032D ; CONFIG0, power mode.
-const acc_range  0x032E ; CONFIG1, dynamic range.
-const acc_rate   0x032F ; CONFIG2, filters and rates.
+const acc_state  0x032D ; CONFIG0, Power Mode.
+const acc_range  0x032E ; CONFIG1, Dynamic Range.
+const acc_rate   0x032F ; CONFIG2, Filters and Rates.
 
 ; Configuration Variables: NVM Transmission. Each transmit
 ; sample is a new byte read from the NVM, in which the top
@@ -626,24 +626,6 @@ call i2c_wr
 ld A,bma_sdly
 call delay_ms 
 
-; Write to CONFIG0, which sets the power mode.
-
-ld A,bma_aconf0
-push A
-pop L
-ld IX,scr_bot
-ld A,(acc_state)
-ld (IX),A
-ld A,1
-push A
-pop C
-call i2c_wr
-
-; Wait for power mode to settle.
-
-ld A,bma_sdly
-call delay_ms 
-
 ; Write to CONFIG1, which sets the sensor range to +-16 g.
 
 ld A,bma_aconf1
@@ -669,6 +651,24 @@ push A
 pop L
 ld IX,scr_bot
 ld A,(acc_rate)
+ld (IX),A
+ld A,1
+push A
+pop C
+call i2c_wr
+
+; Wait for register write to complete.
+
+ld A,bma_sdly
+call delay_ms 
+
+; Write to CONFIG0, which sets the power mode.
+
+ld A,bma_aconf0
+push A
+pop L
+ld IX,scr_bot
+ld A,(acc_state)
 ld (IX),A
 ld A,1
 push A
@@ -867,15 +867,23 @@ int_temp_done:
 
 ; Transmit an accelerometer measurement. The byte ordering
 ; on the BMA400 accelerometer is little-endian, with the
-; first seven bits in the first byte and the upper four
-; bits as the least significant four bits of the next byte. 
-; We shift the twelve bits four places to the left to make
-; a signed sixteen-bit number, then add off_16bs to get
-; an unsigned sixteen-bit number. We will transmit the
-; x, y, and z coordinates depending upon whether or not
-; these three are enabled by their channel numbers being
-; non-zero. We do not check the channel numbers to see if
-; they are valid telemetry signal numbers.
+; first eight bits in the first byte and the remaining four
+; bits in the lower nibble of the second byte. The upper
+; nibble in the second byte is all zeros. We have two 
+; choices for extending to sixteen bits: shift all bits
+; four spaces to the left, which takes about fifty clock
+; cycles, or check the sign bit in the second byte and
+; extend it into the upper nibble of the second byte, 
+; which takes five clock cycles. In both cases, we 
+; finish by adding 0x8000 to the sixteen-bit offset
+; positive value. The former method gives us a value
+; that can range from 0-65520, the latter gives us a
+; value that can range only from 30720-34815. We choose
+; the latter in order to reduce current consumption. We 
+; will transmit the x, y, and z coordinates depending 
+; upon whether or not their individual channel numbers 
+; are non-zero. We do not check the channel numbers to 
+; see if they are valid telemetry signal numbers.
 
 int_acc:
 
@@ -907,29 +915,17 @@ ld A,2
 push A
 pop C
 call i2c_rd
-
-ld A,3
-push A
-pop B
-dec IX
-
-shift_x_loop:
 dec IX
 ld A,(IX)
-rl A
-ld (IX),A
-inc IX
+and A,bit3_mask
 ld A,(IX)
-rl A
-ld (IX),A
-dec B
-jp nz,shift_x_loop
-
+jp z,int_acc_x_pos
+or A,0xF0
+int_acc_x_pos:
 add A,off_16bs   
 ld (mmu_xhb),A
 dec IX
 ld A,(IX)
-and A,0xF0
 ld (mmu_xlb),A
 
 ld A,(acc_xch)
@@ -953,6 +949,11 @@ pop C
 call i2c_rd
 dec IX
 ld A,(IX)
+and A,bit3_mask
+ld A,(IX)
+jp z,int_acc_y_pos
+or A,0xF0
+int_acc_y_pos:
 add A,off_16bs   
 ld (mmu_xhb),A
 dec IX
@@ -979,6 +980,11 @@ pop C
 call i2c_rd
 dec IX
 ld A,(IX)
+and A,bit3_mask
+ld A,(IX)
+jp z,int_acc_z_pos
+or A,0xF0
+int_acc_z_pos:
 add A,off_16bs   
 ld (mmu_xhb),A
 dec IX
