@@ -361,7 +361,7 @@ const bma_aconf1   0x1A ; ACC_CONFIG1 register
 const bma_aconf2   0x1B ; ACC_CONFIG2 register
 const bma_cmd      0x7E ; CMD register
 const bma_reset    0xB6 ; For CMD, soft reset, starts reconfiguration
-const bma_sdly        2 ; Startup delay in milliseconds
+const bma_sdly       10 ; Startup delay in milliseconds
 const bma_sleep    0x00 ; Sleep mode, for CONFIG0
 const bma_lpm      0x01 ; Low-Power mode, for CONFIG0
 const bma_nm       0x02 ; Normal mode, for CONFIG0
