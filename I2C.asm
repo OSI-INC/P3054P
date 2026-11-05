@@ -196,12 +196,16 @@ inc IX
 dec C
 jp nz,i2c_wr_loop
 
-; I2C: Stop code (SP). Make sure we leave SDA in the 
-; high-impedance state and drive SCL HI.
+; I2C: Stop code (SP). Put SDA in the high-impedance state 
+; and drive SCL HI.
 
 ld (mmu_i2c00),A  ; 3
 ld (mmu_i2c01),A  ; 3
 ld (mmu_i2cZ1),A  ; 3
+
+; Make sure SDA is really HI.
+
+ld (mmu_i2c11),A  ; 3
      
 ; Restore A, C, and F.
 
@@ -488,7 +492,11 @@ ld (mmu_i2cZ0),A  ; 3
 ld (mmu_i2c00),A  ; 3
 ld (mmu_i2c01),A  ; 3
 ld (mmu_i2cZ1),A  ; 3
-  
+
+; Make sure SDA is really HI.
+
+ld (mmu_i2c11),A  ; 3
+
 ; Pop A, C and F.
 
 pop C

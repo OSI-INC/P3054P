@@ -185,18 +185,19 @@ entity main is
 	constant mmu_i0p   : integer := 16#11#; -- Interrupt Zero Period (Write/Readback)
 	constant mmu_i2c00 : integer := 16#12#; -- i2c SDA=0 SCL=0 (Write/Readback)
 	constant mmu_i2c01 : integer := 16#13#; -- i2c SDA=0 SCL=1 (Write/Readback)
-	constant mmu_i2cA0 : integer := 16#14#; -- i2c SDA=A SCL=0 (Write/Readback)
-	constant mmu_i2cA1 : integer := 16#15#; -- i2c SDA=A SCL=1 (Write/Readback)
-	constant mmu_i2cZ0 : integer := 16#16#; -- i2c SDA=Z SCL=0 (Write/Readback)
-	constant mmu_i2cZ1 : integer := 16#17#; -- i2c SDA=Z SCL=1 (Write/Readback)
-	constant mmu_i2cMR : integer := 16#18#; -- i2C Most Recent Eight Bits (Read)
-	constant mmu_smcr  : integer := 16#19#; -- Sample Control (Write/Readback)
-	constant mmu_x1cfg : integer := 16#1A#; -- X1 Configuration (Write/Readback)
-	constant mmu_x2cfg : integer := 16#1B#; -- X2 Configuration (Write/Readback)
-	constant mmu_x3cfg : integer := 16#1C#; -- X3 Configuration (Write/Readback)
-	constant mmu_x4cfg : integer := 16#1D#; -- X4 Configuration (Write/Readback)
-	constant mmu_smemh : integer := 16#1E#; -- Sample HI Byte (Read)
-	constant mmu_smeml : integer := 16#1F#; -- Sample LO Byte (Read)
+	constant mmu_i2c11 : integer := 16#14#; -- i2c SDA=1 SCL=1 (Write/Readback)
+	constant mmu_i2cA0 : integer := 16#15#; -- i2c SDA=A SCL=0 (Write/Readback)
+	constant mmu_i2cA1 : integer := 16#16#; -- i2c SDA=A SCL=1 (Write/Readback)
+	constant mmu_i2cZ0 : integer := 16#17#; -- i2c SDA=Z SCL=0 (Write/Readback)
+	constant mmu_i2cZ1 : integer := 16#18#; -- i2c SDA=Z SCL=1 (Write/Readback)
+	constant mmu_i2cMR : integer := 16#19#; -- i2C Most Recent Eight Bits (Read)
+	constant mmu_smcr  : integer := 16#1A#; -- Sample Control (Write/Readback)
+	constant mmu_x1cfg : integer := 16#1B#; -- X1 Configuration (Write/Readback)
+	constant mmu_x2cfg : integer := 16#1C#; -- X2 Configuration (Write/Readback)
+	constant mmu_x3cfg : integer := 16#1D#; -- X3 Configuration (Write/Readback)
+	constant mmu_x4cfg : integer := 16#1E#; -- X4 Configuration (Write/Readback)
+	constant mmu_smemh : integer := 16#1F#; -- Sample HI Byte (Read)
+	constant mmu_smeml : integer := 16#20#; -- Sample LO Byte (Read)
 	
 -- Sample and Accumulate Constants
 	constant x1_sel : std_logic_vector(1 downto 0) := "00";
@@ -495,7 +496,7 @@ begin
 		-- along with CPU Write. They will be ready before the falling 
 		-- edge of the CPU clock.
 		all_bits := to_integer(unsigned(cpu_addr));
-		bottom_bits := to_integer(unsigned(cpu_addr(5 downto 0)));
+		bottom_bits := to_integer(unsigned(cpu_addr(6 downto 0)));
 		
 		-- Combinatorial memory map, which serves all access except 
 		-- for writing to control registers. We have the control
@@ -584,7 +585,7 @@ begin
 			CPRST <= true;
 			frequency_low <= default_frequency_low;
 			fck_mask <= default_fck_mask;
-			SDA <= 'Z';
+			SDA <= '1';
 			SCL <= '1';
 			MSR <= '0';
 			DC <= '0';
@@ -705,6 +706,9 @@ begin
 							SCL <= '0';
 						when mmu_i2c01 =>
 							SDA <= '0';
+							SCL <= '1';
+						when mmu_i2c11 =>
+							SDA <= '1';
 							SCL <= '1';
 						when mmu_i2cA0 => 
 							if (cpu_data_out(7) = '0') then
