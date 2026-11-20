@@ -202,10 +202,6 @@ jp nz,i2c_wr_loop
 ld (mmu_i2c00),A  ; 3
 ld (mmu_i2c01),A  ; 3
 ld (mmu_i2cZ1),A  ; 3
-
-; Make sure SDA is really HI.
-
-ld (mmu_i2c11),A  ; 3
      
 ; Restore A, C, and F.
 
@@ -492,10 +488,6 @@ ld (mmu_i2cZ0),A  ; 3
 ld (mmu_i2c00),A  ; 3
 ld (mmu_i2c01),A  ; 3
 ld (mmu_i2cZ1),A  ; 3
-
-; Make sure SDA is really HI.
-
-ld (mmu_i2c11),A  ; 3
 
 ; Pop A, C and F.
 

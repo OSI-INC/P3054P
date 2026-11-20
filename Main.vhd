@@ -112,6 +112,9 @@
 
 -- V1.21 [17-JUL-26] Add soft reset to accelerometer configuration.
 
+-- [05-NOV-26] Add i2c11 instruction to I2C bus, which we use when studying
+-- current consumption of I2C sensors, but do not use in production.
+
 library ieee;  
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -585,7 +588,7 @@ begin
 			CPRST <= true;
 			frequency_low <= default_frequency_low;
 			fck_mask <= default_fck_mask;
-			SDA <= '1';
+			SDA <= 'Z';
 			SCL <= '1';
 			MSR <= '0';
 			DC <= '0';
@@ -944,7 +947,7 @@ begin
 -- edge of FCK. The manager also toggles the SCRQ so as to request
 -- that FCK start up. The Sample Controller will set SCACK equal to
 -- SCRQ when it has finished sampling. The manager enables FCK when 
--- SCRQ and SCACK are not equal, This interaction between two
+-- SCRQ and SCACK are not equal. This interaction between two
 -- processes, one running on RCK and one on FCK works provided that
 -- the Sample Controller runs on the rising edge of FCK and toggles 
 -- SCACK on the falling edge. 
@@ -965,6 +968,7 @@ begin
 			TMINT <= false;
 			TMRUN := false;
 			state := tm_idle;
+			tx_index := 0;
 		elsif rising_edge(RCK) then
 			TMRUN := (int_mask(0) = '1');
 			
@@ -1007,10 +1011,10 @@ begin
 		ENFCKTM <= SCRQ xor SCACK;
 	end process;
 
--- The Sample Memory is fourteen bits wide so as to accommodate
--- our fourteen-bit ADC samples. The sample memory runs off 
--- the fast clock to work well with the Sample Controller, which
--- also runs on fast clock.
+-- The Sample Memory is eighteen bits wide so as to accommodate
+-- a sum of up to sixteen fourteen-bit ADC samples. The sample 
+-- memory runs off the fast clock to work well with the Sample 
+-- Controller, which also runs on fast clock.
 	Sample_Memory : entity SMRAM port map (
 		Clock => not FCK,
 		ClockEn => '1',
@@ -1035,9 +1039,9 @@ begin
 		end if;
 	end process;
 		
--- The Sample Accumulator adds fourteen-bit samples from the Sample 
--- Memory together so as to produce an eighteen-bit value from which
--- we will read the top sixteen bits as our sample for transmission.
+-- The Sample Accumulator adds newly-acquired ADC samples, which have
+-- been shifted left from zero to four places, to an existing eighteen
+-- bit sample memory value.
 	Sample_Accumulator : entity SMADD port map (
 		DataA => adc_data,
 		DataB => smem_data,
