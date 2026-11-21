@@ -152,16 +152,17 @@ entity main is
 	constant default_frequency_low : integer := 5;
 		
 -- Configuration of OSR8 CPU.
-	constant prog_cntr_len : integer := 12;
-	constant cpu_addr_len : integer := 10;
-	constant start_pc : integer := 0;
-	constant interrupt_pc : integer := 3;
-	constant ram_addr_len : integer := 10;
+	constant prog_cntr_len : positive := 12;
+	constant cpu_addr_len : positive := 10;
+	constant start_pc : natural := 0;
+	constant interrupt_pc : natural := 3;
+	constant ram_addr_len : positive := 10;
 
 -- Memory Map Constants, sizes and base addresses.
+	constant num_ctrl_bits : natural := 5;
 	constant ctrl_bot : integer := 16#0000#;
-	constant ctrl_top : integer := 16#00FF#;
-	constant ram_bot  : integer := 16#0100#;
+	constant ctrl_top : integer := 16#001F#;
+	constant ram_bot  : integer := 16#0020#;
 	constant ram_top  : integer := 16#03FF#;
 	
 -- Memory Map Constants, low nibble addresses in units of bytes. When a location is
@@ -188,19 +189,18 @@ entity main is
 	constant mmu_i0p   : integer := 16#11#; -- Interrupt Zero Period (Write/Readback)
 	constant mmu_i2c00 : integer := 16#12#; -- i2c SDA=0 SCL=0 (Write/Readback)
 	constant mmu_i2c01 : integer := 16#13#; -- i2c SDA=0 SCL=1 (Write/Readback)
-	constant mmu_i2c11 : integer := 16#14#; -- i2c SDA=1 SCL=1 (Write/Readback)
-	constant mmu_i2cA0 : integer := 16#15#; -- i2c SDA=A SCL=0 (Write/Readback)
-	constant mmu_i2cA1 : integer := 16#16#; -- i2c SDA=A SCL=1 (Write/Readback)
-	constant mmu_i2cZ0 : integer := 16#17#; -- i2c SDA=Z SCL=0 (Write/Readback)
-	constant mmu_i2cZ1 : integer := 16#18#; -- i2c SDA=Z SCL=1 (Write/Readback)
-	constant mmu_i2cMR : integer := 16#19#; -- i2C Most Recent Eight Bits (Read)
-	constant mmu_smcr  : integer := 16#1A#; -- Sample Control (Write/Readback)
-	constant mmu_x1cfg : integer := 16#1B#; -- X1 Configuration (Write/Readback)
-	constant mmu_x2cfg : integer := 16#1C#; -- X2 Configuration (Write/Readback)
-	constant mmu_x3cfg : integer := 16#1D#; -- X3 Configuration (Write/Readback)
-	constant mmu_x4cfg : integer := 16#1E#; -- X4 Configuration (Write/Readback)
-	constant mmu_smemh : integer := 16#1F#; -- Sample HI Byte (Read)
-	constant mmu_smeml : integer := 16#20#; -- Sample LO Byte (Read)
+	constant mmu_i2cA0 : integer := 16#14#; -- i2c SDA=A SCL=0 (Write/Readback)
+	constant mmu_i2cA1 : integer := 16#15#; -- i2c SDA=A SCL=1 (Write/Readback)
+	constant mmu_i2cZ0 : integer := 16#16#; -- i2c SDA=Z SCL=0 (Write/Readback)
+	constant mmu_i2cZ1 : integer := 16#17#; -- i2c SDA=Z SCL=1 (Write/Readback)
+	constant mmu_i2cMR : integer := 16#18#; -- i2C Most Recent Eight Bits (Read)
+	constant mmu_smcr  : integer := 16#19#; -- Sample Control (Write/Readback)
+	constant mmu_x1cfg : integer := 16#1A#; -- X1 Configuration (Write/Readback)
+	constant mmu_x2cfg : integer := 16#1B#; -- X2 Configuration (Write/Readback)
+	constant mmu_x3cfg : integer := 16#1C#; -- X3 Configuration (Write/Readback)
+	constant mmu_x4cfg : integer := 16#1D#; -- X4 Configuration (Write/Readback)
+	constant mmu_smemh : integer := 16#1E#; -- Sample HI Byte (Read)
+	constant mmu_smeml : integer := 16#1F#; -- Sample LO Byte (Read)
 	
 -- Sample and Accumulate Constants
 	constant x1_sel : std_logic_vector(1 downto 0) := "00";
@@ -482,8 +482,8 @@ begin
 -- Handler. Byte ordering is big-endian (most significant byte at lower 
 -- address). 
 	MMU : process (all) is
-		variable all_bits : integer range 0 to 2048;
-		variable bottom_bits : integer range 0 to 31;
+		variable all_bits : integer range 0 to ram_top;
+		variable bottom_bits : integer range 0 to ctrl_top;
 	begin		
 		-- By default, don't write to RAM or PROG memories, nor do we read from
 		-- the command memory FIFO.
@@ -499,7 +499,7 @@ begin
 		-- along with CPU Write. They will be ready before the falling 
 		-- edge of the CPU clock.
 		all_bits := to_integer(unsigned(cpu_addr));
-		bottom_bits := to_integer(unsigned(cpu_addr(6 downto 0)));
+		bottom_bits := to_integer(unsigned(cpu_addr(num_ctrl_bits-1 downto 0)));
 		
 		-- Combinatorial memory map, which serves all access except 
 		-- for writing to control registers. We have the control
@@ -709,9 +709,6 @@ begin
 							SCL <= '0';
 						when mmu_i2c01 =>
 							SDA <= '0';
-							SCL <= '1';
-						when mmu_i2c11 =>
-							SDA <= '1';
 							SCL <= '1';
 						when mmu_i2cA0 => 
 							if (cpu_data_out(7) = '0') then

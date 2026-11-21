@@ -20,21 +20,18 @@ const def_fck      0x10 ; Fast Clock Mask
 ; pad block and the program variable block. The total memory
 ; size is 1 KByte.
 
-const ctrl_bot   0x0000 ; Control Registers
-const stack_bot  0x0100 ; Program Stack
-const scr_bot    0x0200 ; Scratch-Pad
-const var_bot    0x0300 ; Program Variables
-const mem_top    0x03FF ; Top of Address Map
+const addr_ctrl  0x0000 ; Control Registers
+const addr_stack 0x0100 ; Program Stack
+const addr_scr   0x0200 ; Scratch-Pad
+const addr_var   0x0300 ; Program Variables
+const addr_top   0x03FF ; Top of Address Map
 
 ; Non-Volatile Memory Map Boundaries. We have four blocks
 ; assigned in the NVM: calibration, configuration, notes,
 ; and history.
 
-const calib_bot  0x0000 ; Calibration
-const config_bot 0x0100 ; Configuration
-const notes_bot  0x0200 ; User Notes
-const hist_bot   0x0400 ; Use History
-const hist_top   0x07FF ; Top of NVM
+const nvm_calib  0x0000 ; Calibration
+const nvm_config 0x0100 ; Configuration
 
 ; Control Register Locations. These are shadowed in RAM.
 
@@ -58,19 +55,18 @@ const mmu_fck    0x0010 ; Fast Clock Mask (Write/Readback)
 const mmu_i0p    0x0011 ; Interrupt Zero Period (Write/Readback)
 const mmu_i2c00  0x0012 ; i2c SDA=0 SCL=0 (Write/Readback)
 const mmu_i2c01  0x0013 ; i2c SDA=0 SCL=1 (Write/Readback)
-const mmu_i2c11  0x0014 ; i2c SDA=1 SCL=1 (Write/Readback)
-const mmu_i2cA0  0x0015 ; i2c SDA=A SCL=0 (Write/Readback)
-const mmu_i2cA1  0x0016 ; i2c SDA=A SCL=1 (Write/Readback) 
-const mmu_i2cZ0  0x0017 ; i2c SDA=Z SCL=0 (Write/Readback)
-const mmu_i2cZ1  0x0018 ; i2c SDA=Z SCL=1 (Write/Readback) 
-const mmu_i2cMR  0x0019 ; i2c Most Recent Eight Bits (Read)
-const mmu_smcr   0x001A ; Sample Control Register (Write)
-const mmu_x1cfg  0x001B ; X1 Configuration (Write/Readback)
-const mmu_x2cfg  0x001C ; X2 Configuration (Write/Readback)
-const mmu_x3cfg  0x001D ; X3 Configuration (Write/Readback)
-const mmu_x4cfg  0x001E ; X4 Configuration (Write/Readback)
-const mmu_smemh  0x001F ; ADC Data HI Byte (Read)
-const mmu_smeml  0x0020 ; ADC Data LO Byte (Read)
+const mmu_i2cA0  0x0014 ; i2c SDA=A SCL=0 (Write/Readback)
+const mmu_i2cA1  0x0015 ; i2c SDA=A SCL=1 (Write/Readback) 
+const mmu_i2cZ0  0x0016 ; i2c SDA=Z SCL=0 (Write/Readback)
+const mmu_i2cZ1  0x0017 ; i2c SDA=Z SCL=1 (Write/Readback) 
+const mmu_i2cMR  0x0018 ; i2c Most Recent Eight Bits (Read)
+const mmu_smcr   0x0019 ; Sample Control Register (Write)
+const mmu_x1cfg  0x001A ; X1 Configuration (Write/Readback)
+const mmu_x2cfg  0x001B ; X2 Configuration (Write/Readback)
+const mmu_x3cfg  0x001C ; X3 Configuration (Write/Readback)
+const mmu_x4cfg  0x001D ; X4 Configuration (Write/Readback)
+const mmu_smemh  0x001E ; ADC Data HI Byte (Read)
+const mmu_smeml  0x001F ; ADC Data LO Byte (Read)
 
 ; Calibration Block: Locations we define in the scratch
 ; area that we will use to store the calibration block
@@ -326,10 +322,6 @@ const op_reset       18 ; Reset, Supported
 
 const nvm_addr     0x50 ; Device address.
 const nvm_amask    0x07 ; Mask for bottom three bits.
-const nvm_calib    0x00 ; Calibration block, bytes 0x000-0x0FF.
-const nvm_config   0x01 ; Configuration block, bytes 0x100-0x1FF.
-const nvm_notes    0x02 ; User note blocks, bytes 0x200-0x3FF.
-const nvm_history  0x04 ; Usage history blocks, bytes 0x400-0x7FF.
 
 ; Constants: Temperature Sensor. The TMP117 provides sixteen-bit 
 ; read and write registers to the I2C bus.
@@ -562,7 +554,7 @@ ld (IX),A
 ld A,tmp_creg
 push A
 pop L
-ld IX,scr_bot
+ld IX,addr_scr
 ld A,tmp_oneh
 ld (IX),A
 inc IX
@@ -614,7 +606,7 @@ pop H
 ld a,bma_cmd
 push A
 pop L
-ld IX,scr_bot
+ld IX,addr_scr
 ld A,bma_reset
 ld (IX),A
 ld A,1
@@ -632,7 +624,7 @@ call delay_ms
 ld A,bma_aconf1
 push A
 pop L
-ld IX,scr_bot
+ld IX,addr_scr
 ld A,(acc_range)
 ld (IX),A
 ld A,1
@@ -650,7 +642,7 @@ call delay_ms
 ld A,bma_aconf2
 push A
 pop L
-ld IX,scr_bot
+ld IX,addr_scr
 ld A,(acc_rate)
 ld (IX),A
 ld A,1
@@ -668,7 +660,7 @@ call delay_ms
 ld A,bma_aconf0
 push A
 pop L
-ld IX,scr_bot
+ld IX,addr_scr
 ld A,(acc_state)
 ld (IX),A
 ld A,1
@@ -911,7 +903,7 @@ jp z,int_acc_y
 ld A,bma_x
 push A
 pop L
-ld IX,scr_bot
+ld IX,addr_scr
 ld A,2
 push A
 pop C
@@ -943,7 +935,7 @@ jp z,int_acc_z
 ld A,bma_y
 push A
 pop L
-ld IX,scr_bot
+ld IX,addr_scr
 ld A,2
 push A
 pop C
@@ -974,7 +966,7 @@ jp z,int_acc_done
 ld A,bma_z
 push A
 pop L
-ld IX,scr_bot
+ld IX,addr_scr
 ld A,2
 push A
 pop C
@@ -1027,7 +1019,7 @@ ld (nvm_xah),A
 or A,nvm_addr
 push A
 pop H
-ld IX,scr_bot
+ld IX,addr_scr
 ld A,1
 push A
 pop C
@@ -1621,14 +1613,14 @@ add A,0            ; If this number is zero,
 jp z,cmd_loop      ; we are done with this instruction.
 push A             ; Make a copy of the number of
 pop E              ; bytes for later.
-ld IX,scr_bot      ; Point IX to the scratch-pad.
+ld IX,addr_scr     ; Point IX to the scratch-pad.
 load_prog:        
 call get_cmd_byte  ; Read instruction byte from command memory
 ld (IX),A          ; and write to the scratch-pad.
 inc IX             ; Increment memory pointer.
 dec B              ; Decrement B, and if not zero, 
 jp nz,load_prog    ; read another byte.
-ld IX,scr_bot      ; Preapare to write the
+ld IX,addr_scr     ; Preapare to write the
 push E             ; values to the NVM.
 pop A              ; We divide the number of
 srl A              ; bytes by sixteen using
@@ -1715,7 +1707,7 @@ ld (mmu_led),A
 
 ; Initialize the stack pointer.
 
-ld HL,stack_bot
+ld HL,addr_stack
 ld SP,HL
 
 ; Configure registers and output pins.
@@ -1744,7 +1736,7 @@ ld (id_l),A        ; locations.
 
 ; Copy the calibration block into the scratchpad.
 
-ld HL,calib_bot
+ld HL,nvm_calib
 push H
 pop A
 and A,0x07
@@ -1754,7 +1746,7 @@ pop H
 ld A,calib_len
 push A
 pop C
-ld IX,scr_bot
+ld IX,addr_scr
 call i2c_rd
 
 ; Check the calibration key. If valid, we will apply
@@ -1846,7 +1838,7 @@ ld (mmu_ccr),A
 ; Copy the configuration block into the configuration area
 ; of the main program variable space.
 
-ld HL,config_bot
+ld HL,nvm_config
 push H
 pop A
 and A,0x07
@@ -1856,7 +1848,7 @@ pop H
 ld A,conf_len
 push A
 pop C
-ld IX,var_bot
+ld IX,addr_var
 call i2c_rd
 
 ; Check the configuration key. If it is valid, jump ahead to
