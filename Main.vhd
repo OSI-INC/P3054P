@@ -1,4 +1,4 @@
--- Intraperitoneal Transmitter (IPT, A3054) Firmware, Top-Level Unit
+-- A3054P Programmable IPT Firmware
 
 -- V1.1 [25-MAR-26] Based upon P3041 V3.6. Set up inputs and outputs.
 
@@ -1509,7 +1509,7 @@ begin
 	
 -- We detect a long enough burst of command power to initiate
 -- command reception, and set the ICMD signal.
-	Initiate_Command: process (RESET, RCK) is 
+	Initiate_Command: process (RPS, MCK) is 
 		constant endcount : integer := 2;
 		variable counter : integer range 0 to 3;
 	begin
@@ -1529,7 +1529,7 @@ begin
 	
 -- We detect a long enough period without command power to 
 -- terminate command reception, and set the TCMD signal.
-	Terminate_Command: process (RESET, RCK) is 
+	Terminate_Command: process (RPS, MCK) is 
 		constant endcount : integer := 7;
 		variable counter : integer range 0 to 7;
 	begin
